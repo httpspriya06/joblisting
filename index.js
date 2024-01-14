@@ -2,32 +2,43 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
-dotenv.config();
+const cors = require("cors");
+
+const authRouter = require("./routes/auth");
+const jobRouter = require("./routes/job");
 
 const app = express();
+
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
+app.use("/", authRouter);
+app.use("/", jobRouter);
 
-app.get("/", (req, res) => {
-  res.json({ message: "all good" });
-});
-
-// health route
+dotenv.config();
 
 app.get("/health", (req, res) => {
-  const dbstatus =
-    mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  const dbStatus =
+    mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
+
   res.status(200).json({
     server: "Running",
-    database: dbstatus,
+    database: dbStatus,
   });
 });
 
-app.listen(process.env.PORT, () => {
-  mongoose
-    .connect(process.env.MONGODB_URL)
-    .then(() =>
-      console.log(`server is running on http://localhost:${process.env.PORT}`)
-    )
-    .catch((error) => console.log(error));
+app.use((req, res, next) => {
+  const error = new Error("Not found");
+  error.status = 404;
+  next(error);
 });
+
+// Error handler middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res
+    .status(500)
+    .json({ error: "Something went wrong! Please try again later." });
+});
+
+module.exports = app;
